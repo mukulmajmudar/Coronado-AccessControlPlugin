@@ -2,7 +2,6 @@ from contextlib import closing
 from datetime import datetime, timedelta
 
 import argh
-import dateutil.parser
 from Coronado.Config import Config as ConfigBase
 from Coronado.Plugin import AppPlugin as AppPluginBase, \
         CommandLinePlugin as CLPluginBase
@@ -407,7 +406,8 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
                 self.installSchema,
                 self.getCurrSchemaVersion,
                 self.grant,
-                self.revoke
+                self.revoke,
+                self.addAccessCtlObject
             ],
             'namespace': True
         })
@@ -442,8 +442,8 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
         '''
         Coronado.configureLogging(level=logLevel, format=logFormat)
         with closing(MySQLPlugin.getMysqlConnection(self.context)) as db:
-            ACLAccessPolicy.grant(db, objectClass, objectId, granteeId,
-                    accessType)
+            ACLAccessPolicy.grant(objectClass, objectId, granteeId,
+                    accessType, database=db)
 
 
     @argh.arg('-l', '--logLevel', 
@@ -459,8 +459,8 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
         '''
         Coronado.configureLogging(level=logLevel, format=logFormat)
         with closing(MySQLPlugin.getMysqlConnection(self.context)) as db:
-            ACLAccessPolicy.revoke(db, objectClass, objectId, granteeId,
-                    accessType)
+            ACLAccessPolicy.revoke(objectClass, objectId, granteeId,
+                    accessType, database=db)
 
 
     def getCurrSchemaVersion(self):
@@ -468,3 +468,21 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
         Get currently installed ACL database schema version.
         '''
         return super().getCurrentVersion('aclMetadata')
+
+
+    @argh.arg('-l', '--logLevel', 
+            help='one of "debug", "info", "warning", "error", and "critical"')
+    @argh.arg('--logFormat', 
+            help='Python-like log format (see Python docs for details)')
+    # pylint: disable=too-many-arguments
+    def addAccessCtlObject(self, objectClass, objectId, ownerId,
+            logLevel='warning',
+            logFormat='%(levelname)s:%(name)s (at %(asctime)s): %(message)s'):
+
+        '''
+        Add an access controlled object.
+        '''
+        Coronado.configureLogging(level=logLevel, format=logFormat)
+        with closing(MySQLPlugin.getMysqlConnection(self.context)) as db:
+            ACLAccessPolicy.addAccessCtlObject(db, objectClass, objectId,
+                    ownerId)
