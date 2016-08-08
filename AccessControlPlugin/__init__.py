@@ -283,8 +283,7 @@ class Config(ConfigBase):
         return Forbidden
 
 
-aclSchemaVersion = 1
-aclSchemaV1SQL = \
+aclSchemaV2SQL = \
 '''
 /**
  * Objects which need access control.
@@ -292,7 +291,8 @@ aclSchemaV1SQL = \
 CREATE TABLE accessControlObjects(
     id INT PRIMARY KEY AUTO_INCREMENT,
     objectClass VARCHAR(30) CHARACTER SET utf8 NOT NULL,
-    objectId INT NOT NULL
+    objectId INT NOT NULL,
+    UNIQUE(objectClass, objectId)
 ) ENGINE=INNODB;
 
 
@@ -330,9 +330,16 @@ CREATE TABLE aclMetadata(
     value VARCHAR(200) CHARACTER SET utf8 NOT NULL
 ) ENGINE=INNODB;
 
-INSERT INTO aclMetadata VALUES ('version', '1');
+INSERT INTO aclMetadata VALUES ('version', '2');
 '''
 
+upgradeFromV1SQL = \
+'''
+ALTER TABLE accessControlObjects ADD CONSTRAINT uniqueObjClsId UNIQUE (objectId, objectClass);
+UPDATE aclMetadata SET value = '2' WHERE attribute = 'version';
+'''
+
+aclSchemaVersion = 2
 
 class SchemaNotInstalled(Exception):
     pass
@@ -404,6 +411,7 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
             'commands': 
             [
                 self.installSchema,
+                self.upgradeSchema,
                 self.getCurrSchemaVersion,
                 self.grant,
                 self.revoke,
@@ -426,7 +434,29 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
         Coronado.configureLogging(level=logLevel, format=logFormat)
         with closing(MySQLPlugin.getMysqlConnection(self.context)) as db:
             with closing(db.cursor()) as cursor:
-                cursor.execute(aclSchemaV1SQL)
+                cursor.execute(aclSchemaV2SQL)
+
+
+    def upgradeSchema(self, logLevel='warning',
+            logFormat='%(levelname)s:%(name)s (at %(asctime)s): %(message)s'):
+        '''
+        Upgrade ACL database schema.
+        '''
+        Coronado.configureLogging(level=logLevel, format=logFormat)
+        currentVersion = self.getCurrSchemaVersion()
+        if currentVersion == '2':
+            print('Schema version is up to date.')
+            return
+        elif currentVersion != '1':
+            print('Upgrade is only possible from schema version 1, ' +
+                'but found installed version {}.'.format(currentVersion))
+            return
+
+        with closing(MySQLPlugin.getMysqlConnection(self.context)) as db:
+            with closing(db.cursor()) as cursor:
+                cursor.execute(upgradeFromV1SQL)
+
+        print('Schema version successfully upgraded to 2.')
 
 
     @argh.arg('-l', '--logLevel', 
