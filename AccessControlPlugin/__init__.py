@@ -412,7 +412,7 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
             [
                 self.installSchema,
                 self.upgradeSchema,
-                self.getCurrSchemaVersion,
+                self.getSchemaVersion,
                 self.grant,
                 self.revoke,
                 self.addAccessCtlObject
@@ -443,7 +443,7 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
         Upgrade ACL database schema.
         '''
         Coronado.configureLogging(level=logLevel, format=logFormat)
-        currentVersion = self.getCurrSchemaVersion()
+        currentVersion = self.getSchemaVersion()
         if currentVersion == '2':
             print('Schema version is up to date.')
             return
@@ -493,11 +493,11 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
                     accessType, database=db)
 
 
-    def getCurrSchemaVersion(self):
+    def getSchemaVersion(self):
         '''
         Get currently installed ACL database schema version.
         '''
-        return super().getCurrentVersion('aclMetadata')
+        return super().getSchemaVersion('aclMetadata')
 
 
     @argh.arg('-l', '--logLevel', 
