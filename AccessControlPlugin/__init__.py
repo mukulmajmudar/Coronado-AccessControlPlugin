@@ -2,7 +2,6 @@ from contextlib import closing
 from datetime import datetime, timedelta
 
 import argh
-from Coronado.Config import Config as ConfigBase
 from Coronado.Plugin import AppPlugin as AppPluginBase, \
         CommandLinePlugin as CLPluginBase
 import Coronado.Exceptions
@@ -254,34 +253,12 @@ class OwnerAccessPolicy(AccessPolicy):
         return row['accessCtlObjectId']
 
 
-class Config(ConfigBase):
-
-    def __init__(self, keys=None): 
-        if keys is None:
-            keys = []
-        super().__init__(
-        [
-            'accessPolicyClasses',
-            'accessPolicyVerifier',
-            'forbiddenExceptionCls'
-        ] + keys)
-
-
-    def _getAccessPolicyClasses(self):
-        '''
-        Access policies for the application.
-        '''
-        return {}
-
-    def _getAccessPolicyVerifier(self):
-        '''
-        Access policy verifier.
-        '''
-        return defaultVerifier
-
-    def _getForbiddenExceptionCls(self):
-        return Forbidden
-
+config = \
+{
+    'accessPolicyClasses': {},
+    'accessPolicyVerifier': defaultVerifier,
+    'forbiddenExceptionCls': Forbidden
+}
 
 aclSchemaV2SQL = \
 '''
