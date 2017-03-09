@@ -1,15 +1,18 @@
 from contextlib import closing
 from datetime import datetime, timedelta
+import logging
 
 import argh
 from Coronado.Plugin import AppPlugin as AppPluginBase, \
         CommandLinePlugin as CLPluginBase
-import Coronado.Exceptions
 import MySQLPlugin
 
 import pymysql
 
 class Forbidden(Exception):
+    pass
+
+class MissingArgument(Exception):
     pass
 
 
@@ -89,7 +92,7 @@ class ACLAccessPolicy(AccessPolicy):
         Grant access to an access control object.
         '''
         if cursor is None and database is None:
-            raise Coronado.Exceptions.MissingArgument(
+            raise MissingArgument(
                 'Either database or cursor is required.')
 
         closeCursor = False
@@ -138,7 +141,7 @@ class ACLAccessPolicy(AccessPolicy):
         Revoke access to an access control object.
         '''
         if cursor is None and database is None:
-            raise Coronado.Exceptions.MissingArgument(
+            raise MissingArgument(
                 'Either database or cursor is required.')
 
         closeCursor = False
@@ -331,7 +334,7 @@ class AppPlugin(AppPluginBase):
         return 'accessControlPlugin'
 
     # pylint: disable=unused-argument
-    def start(self, app, context):
+    def start(self, context):
         self.context = context
 
         with closing(self.context['database'].cursor()) as cursor:
@@ -408,7 +411,8 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
         '''
         Install ACL database schema.
         '''
-        Coronado.configureLogging(level=logLevel, format=logFormat)
+        logging.basicConfig(level=getattr(logging, logLevel.upper(),
+            logging.NOTSET), format=logFormat)
         with closing(MySQLPlugin.getMysqlConnection(self.context)) as db:
             with closing(db.cursor()) as cursor:
                 cursor.execute(aclSchemaV2SQL)
@@ -419,7 +423,8 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
         '''
         Upgrade ACL database schema.
         '''
-        Coronado.configureLogging(level=logLevel, format=logFormat)
+        logging.basicConfig(level=getattr(logging, logLevel.upper(),
+            logging.NOTSET), format=logFormat)
         currentVersion = self.getSchemaVersion()
         if currentVersion == '2':
             print('Schema version is up to date.')
@@ -447,7 +452,8 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
         '''
         Grant access to an object to a user.
         '''
-        Coronado.configureLogging(level=logLevel, format=logFormat)
+        logging.basicConfig(level=getattr(logging, logLevel.upper(),
+            logging.NOTSET), format=logFormat)
         with closing(MySQLPlugin.getMysqlConnection(self.context)) as db:
             ACLAccessPolicy.grant(objectClass, objectId, granteeId,
                     accessType, database=db)
@@ -464,7 +470,8 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
         '''
         Revoke a user's access to an object.
         '''
-        Coronado.configureLogging(level=logLevel, format=logFormat)
+        logging.basicConfig(level=getattr(logging, logLevel.upper(),
+            logging.NOTSET), format=logFormat)
         with closing(MySQLPlugin.getMysqlConnection(self.context)) as db:
             ACLAccessPolicy.revoke(objectClass, objectId, granteeId,
                     accessType, database=db)
@@ -489,7 +496,8 @@ class CommandLinePlugin(MySQLPlugin.CommandLinePlugin):
         '''
         Add an access controlled object.
         '''
-        Coronado.configureLogging(level=logLevel, format=logFormat)
+        logging.basicConfig(level=getattr(logging, logLevel.upper(),
+            logging.NOTSET), format=logFormat)
         with closing(MySQLPlugin.getMysqlConnection(self.context)) as db:
             ACLAccessPolicy.addAccessCtlObject(db, objectClass, objectId,
                     ownerId)
