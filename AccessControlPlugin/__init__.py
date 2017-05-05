@@ -182,7 +182,9 @@ class ACLAccessPolicy(AccessPolicy):
 
     @staticmethod
     def addAccessCtlObject(database, objectClass, objectId, ownerId,
-            transaction=True):
+            transaction=True, accessTypes=None):
+        if accessTypes is None:
+            accessTypes = ['read', 'edit']
         with closing(database.cursor()) as cursor:
             if transaction:
                 cursor.execute('BEGIN')
@@ -201,13 +203,13 @@ class ACLAccessPolicy(AccessPolicy):
                         'INSERT INTO accessControlOwners VALUES (%s, %s)',
                         (acoId, ownerId))
 
-                # Add access rules: owner has read and edit access
+                # Add access rules
                 cursor.executemany('''INSERT INTO accessControlRules
                     (accessCtlObjectId, granteeId, accessType) VALUES
                         (%s, %s, %s)''', 
                     [
-                        (acoId, ownerId, 'read'),
-                        (acoId, ownerId, 'edit'),
+                        (acoId, ownerId, accessType)
+                        for accessType in accessTypes
                     ])
             except:
                 if transaction:
@@ -218,6 +220,17 @@ class ACLAccessPolicy(AccessPolicy):
                     database.commit()
 
                 return acoId
+
+
+    @staticmethod
+    def delAccessCtlObject(database, objectClass, objectId):
+        with closing(database.cursor()) as cursor:
+            # Create access control object
+            cursor.execute(
+                '''
+                DELETE FROM accessControlObjects
+                WHERE objectClass = %s AND objectId = %s
+                ''', (objectClass, objectId))
 
 
 class OwnerAccessPolicy(AccessPolicy):
